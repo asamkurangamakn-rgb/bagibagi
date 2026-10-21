@@ -1,0 +1,12 @@
+{
+  "name": "roblox-donation-server",
+  "version": "1.0.0",
+  "description": "BagiBagi donation bridge for Roblox",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
