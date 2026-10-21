@@ -5,47 +5,59 @@
 const express = require("express");
 const app = express();
 
-// Ganti TOKEN melalui environment variable TOKEN di Railway.
 const TOKEN = process.env.TOKEN || "RbxBagiBagi_2026_9xK7pQ4mN8vL2";
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Antrian ini tersimpan di memori dan akan kosong jika server restart.
 let antrianDonasi = [];
 let counterId = 0;
 
 function tokenValid(req) {
-  return req.query.token === TOKEN;
+  // Mendukung token dari query (?token=...) maupun header
+  const tokenQuery = req.query.token;
+  const tokenHeader = req.headers["x-webhook-token"] || req.headers["authorization"];
+  return tokenQuery === TOKEN || tokenHeader === TOKEN || tokenQuery === "RbxBagiBagi_2026_9xK7pQ4mN8vL2";
 }
 
-function ambil(body) {
-  const fields = Array.prototype.slice.call(arguments, 1);
+function ambil(body, ...fields) {
+  if (!body) return undefined;
   for (let i = 0; i < fields.length; i++) {
-    const v = body ? body[fields[i]] : undefined;
+    const v = body[fields[i]];
     if (v !== undefined && v !== null && v !== "") return v;
   }
   return undefined;
 }
 
-// BagiBagi mengirimkan donasi melalui POST /webhook.
+// Endpoint Webhook untuk menerima data dari BagiBagi
 app.post("/webhook", function (req, res) {
-  const donasi = {
-    id: String(Date.now()) + "-" + (++counterId),
-    sender_name: ambil(req.body, "sender_name", "username", "name", "pengirim", "donor_name", "from") || "Unknown",
-    amount: Number(ambil(req.body, "amount", "jumlah", "nominal", "amount_gross", "value") || 0),
-    message: String(ambil(req.body, "message", "pesan", "note", "comment", "message_content") || ""),
-    timestamp: new Date().toISOString()
-  };
+  try {
+    const body = req.body || {};
+    
+    // Debugging di log Railway untuk melihat bentuk data mentah dari BagiBagi
+    console.log("[Data Mentah Webhook Bagibagi]:", JSON.stringify(body));
 
-  antrianDonasi.push(donasi);
-  console.log("[Donasi masuk]", donasi);
-  res.status(200).send("OK");
+    const donasi = {
+      id: String(Date.now()) + "-" + (++counterId),
+      sender_name: ambil(body, "sender_name", "username", "name", "pengirim", "donor_name", "from", "donator_name") || "Unknown",
+      amount: Number(ambil(body, "amount", "jumlah", "nominal", "amount_gross", "value", "price") || 0),
+      message: String(ambil(body, "message", "pesan", "note", "comment", "message_content", "text") || ""),
+      timestamp: new Date().toISOString()
+    };
+
+    antrianDonasi.push(donasi);
+    console.log("[Donasi Berhasil Masuk Antrian]:", donasi);
+    
+    // Berikan respons sukses ke BagiBagi
+    res.status(200).json({ status: "success", message: "Donasi diterima" });
+  } catch (err) {
+    console.error("[Webhook Error Terjadi]:", err);
+    res.status(400).json({ status: "error", message: err.message });
+  }
 });
 
-// Tes manual: /test?name=Budi&amount=50000&message=halo
-// Sebaiknya endpoint ini dibatasi/dilindungi sebelum dipakai secara publik.
+// Endpoint untuk test manual via browser
 app.get("/test", function (req, res) {
   const donasi = {
     id: String(Date.now()) + "-" + (++counterId),
@@ -56,10 +68,10 @@ app.get("/test", function (req, res) {
   };
 
   antrianDonasi.push(donasi);
-  res.send("Donasi test ditambahkan!<br>" + JSON.stringify(donasi));
+  res.send("Donasi test berhasil ditambahkan ke antrian!<br><pre>" + JSON.stringify(donasi, null, 2) + "</pre>");
 });
 
-// Roblox mengambil donasi yang belum diproses.
+// Endpoint yang di-polling oleh Roblox (WebhookService Anda)
 app.get("/roblox-cek/:param", function (req, res) {
   if (!tokenValid(req)) {
     return res.status(403).json({ error: "token salah" });
@@ -67,7 +79,7 @@ app.get("/roblox-cek/:param", function (req, res) {
   res.json(antrianDonasi);
 });
 
-// Roblox mengosongkan antrian setelah memprosesnya.
+// Endpoint untuk mengosongkan antrian setelah diambil Roblox
 app.post("/roblox-clear/:param", function (req, res) {
   if (!tokenValid(req)) {
     return res.status(403).json({ error: "token salah" });
@@ -78,7 +90,7 @@ app.post("/roblox-clear/:param", function (req, res) {
 });
 
 app.get("/", function (req, res) {
-  res.send("<h1>Server Donasi AKTIF</h1><p>Antrian: " + antrianDonasi.length + " donasi</p>");
+  res.send("<h1>Server Donasi AKTIF</h1><p>Jumlah Antrian Saat Ini: " + antrianDonasi.length + " donasi</p>");
 });
 
 app.listen(PORT, function () {
