@@ -16,7 +16,7 @@ let totalDonasi = 0
 let lastRawData = null
 
 // URL Webhook Discord milikmu
-const DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1512265510400561314/kNlD-zECbRL6s15XhxkQHSFv8ggJWQu2ZHwH3YEQow8MgE1qu3YOJ_eaOQ9kh4HMIVI6"
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1564766873013453022/dNWizVLU4NUkWlphfwYmpGw8Y7X9toB4sexaQ9GB_MklUZYO0c4moEBr3CNWA7qmIc9E"
 
 // Fungsi untuk mengirim notifikasi ke Discord
 async function sendToDiscord(nama, jumlah, pesan, robloxUsername) {
@@ -226,7 +226,7 @@ app.get('/reset', (req, res) => {
 
 app.get('/', (req, res) => {
     res.json({ 
-        status: "CVA STUDIO BAGIBAGI",
+        status: "ZEL BAGIBAGI",
         info: "Gunakan @username di nama atau pesan untuk link ke Roblox",
         totalDonatur: Object.keys(topDonatur).length,
         totalDonasi
